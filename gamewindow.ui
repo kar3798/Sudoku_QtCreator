@@ -836,23 +836,23 @@
     <string>UNDO</string>
    </property>
   </widget>
-  <widget class="QPushButton" name="pushButtonErase">
+  <widget class="QPushButton" name="pushButtonPause">
    <property name="geometry">
     <rect>
-     <x>465</x>
+     <x>459</x>
      <y>80</y>
-     <width>50</width>
+     <width>71</width>
      <height>50</height>
     </rect>
    </property>
    <property name="text">
-    <string>ERASE</string>
+    <string>PAUSE</string>
    </property>
   </widget>
   <widget class="QPushButton" name="pushButtonHint">
    <property name="geometry">
     <rect>
-     <x>530</x>
+     <x>540</x>
      <y>80</y>
      <width>50</width>
      <height>50</height>

@@ -12,7 +12,9 @@ GameWindow::GameWindow(Difficulty difficulty, QWidget *parent)
     , game(new SudokuGame(difficulty, this))
     , selectedCell(nullptr) // Initialize selectedCell to nullptr
     , elapsedTime(0) // Initialize the time to zero
+    , isPaused(false) // Initial timer is not paused
     , mistakeCount(0) // Initialize mistake count to zero
+
 {
     ui->setupUi(this);
     loadInitialGrid();
@@ -21,8 +23,8 @@ GameWindow::GameWindow(Difficulty difficulty, QWidget *parent)
     timer = new QTimer(this);
     connect(timer, &QTimer::timeout, this, &GameWindow::updateTimer);
 
-    // Starting the timer
-    timer->start(1000); // Triggers the timer every 1000 ms
+    // Start the timer with a 1-second interval
+    timer->start(1000);
 
     // Set the initial mistake count in the UI
     ui->mistakeCntLabel->setText("Mistakes: 0/3");
@@ -35,6 +37,22 @@ GameWindow::GameWindow(Difficulty difficulty, QWidget *parent)
     connect(ui->pushButton7, &QPushButton::clicked, this, [=]() { handleNumberInput(7); });
     connect(ui->pushButton8, &QPushButton::clicked, this, [=]() { handleNumberInput(8); });
     connect(ui->pushButton9, &QPushButton::clicked, this, [=]() { handleNumberInput(9); });
+
+    // Pause button setup
+    connect(ui->pushButtonPause, &QPushButton::clicked, this, &GameWindow::togglePause);
+
+    // Undo button setup
+    connect(ui->pushButtonUndo, &QPushButton::clicked, this, &GameWindow::undoLastMove);
+
+    ui->pushButtonPause->setText("PAUSE");
+
+    // Initialize the list of buttons to control
+    interactiveButtons = {
+        ui->pushButton1, ui->pushButton2, ui->pushButton3,
+        ui->pushButton4, ui->pushButton5, ui->pushButton6,
+        ui->pushButton7, ui->pushButton8, ui->pushButton9,
+        ui->pushButtonUndo, ui->pushButtonHint
+    };
 }
 
 GameWindow::~GameWindow()
@@ -116,20 +134,44 @@ void GameWindow::selectCell() {
     }
 }
 
+// Slot to handle the pausing and resuming
+void GameWindow::togglePause() {
+    if(isPaused){
+        // Resume the timer and re-enabling buttons
+        timer->start(1000);
+        ui->pushButtonPause->setText("PAUSE");
+        isPaused = false;
+
+        // Re-enabling the buttons
+        setButtonEnabled(true);
+    }
+    else {
+        // Pause the timer and disabling buttons
+        timer->stop();
+        ui->pushButtonPause->setText("RESUME");
+        isPaused = true;
+
+        // Disabling the buttons
+        setButtonEnabled(false);
+    }
+}
+
 // Slot to update the timer display
 void GameWindow::updateTimer() {
-    elapsedTime++; // Incrementing elasped time by 1 sec
+    if(!isPaused){
+        elapsedTime++; // Incrementing elasped time by 1 sec
 
-    // Formatting the elasped time (MM:SS)
-    int minutes = elapsedTime / 60;
-    int seconds = elapsedTime % 60;
+        // Formatting the elasped time (MM:SS)
+        int minutes = elapsedTime / 60;
+        int seconds = elapsedTime % 60;
 
-    QString timeText = QString("%1:%2")
-                           .arg(minutes, 2, 10, QChar('0'))
-                           .arg(seconds, 2, 10, QChar('0'));
+        QString timeText = QString("%1:%2")
+                               .arg(minutes, 2, 10, QChar('0'))
+                               .arg(seconds, 2, 10, QChar('0'));
 
-    // Update the QLabel on the UI
-    ui->timeLabel->setText(timeText);
+        // Update the QLabel on the UI
+        ui->timeLabel->setText(timeText);
+    }
 }
 
 void GameWindow::handleNumberInput(int number) {
@@ -138,13 +180,16 @@ void GameWindow::handleNumberInput(int number) {
     if (selectedCell && !selectedCell->isReadOnly()) { // Check if a cell is selected and editable
         qDebug() << "Updating selected cell:" << selectedCell->objectName();
 
-        // Set the entered number in the selected cell
-        selectedCell->setText(QString::number(number));
-
         // Extract row and column from selected cell's name (e.g., "cell11" for row 1, col 1)
         QString name = selectedCell->objectName();
         int row = name.mid(4, 1).toInt() - 1;
         int col = name.mid(5, 1).toInt() - 1;
+
+        // Push only the row and column of the move onto the stack
+        moveStack.push({row, col});
+
+        // Setting the entered number in the selected cell
+        selectedCell->setText(QString::number(number));
 
         // Check if the entered number is correct and handle mistakes
         checkAndHandleInput(row, col, number);
@@ -153,5 +198,26 @@ void GameWindow::handleNumberInput(int number) {
     }
 }
 
+void GameWindow::undoLastMove(){
+    if(!moveStack.isEmpty()){
+        Move lastMove = moveStack.pop(); // Get the last move
 
+        // Finding the corresponding cell based on row and col
+        QString cellName = QString("cell%1%2").arg(lastMove.row + 1).arg(lastMove.col + 1);
+        QLineEdit *cell = findChild<QLineEdit *>(cellName);
+
+        if (cell && !cell->isReadOnly()) { // Only modify editable cells
+            cell->clear(); // Clear the cell if the previous value was empty
+            qDebug() << "Undo last move: row" << lastMove.row << ", col" << lastMove.col;
+        }
+    } else {
+        qDebug() << "No moves to undo";
+    }
+}
+
+void GameWindow::setButtonEnabled(bool enable) {
+    for (auto button : interactiveButtons)  {
+        button->setEnabled(enable);
+    }
+}
 

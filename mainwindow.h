@@ -18,6 +18,8 @@ public:
     MainWindow(QWidget *parent = nullptr);
     ~MainWindow();
 
+    void startUpSetup();
+
 private slots:
     void startEasyGame();   // Slot fot Easy Button
 
@@ -25,6 +27,7 @@ private slots:
 
     void startHardGame();   // Slot for Hard Button
 
+    void reloadMainWindow(); // Reloads main window when game window is closed
 private:
     Ui::MainWindow *ui;
 

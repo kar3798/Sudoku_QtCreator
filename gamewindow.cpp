@@ -12,11 +12,16 @@ GameWindow::GameWindow(Difficulty difficulty, QWidget *parent)
     , game(new SudokuGame(difficulty, this))
     , selectedCell(nullptr) // Initialize selectedCell to nullptr
     , elapsedTime(0) // Initialize the time to zero
-    , isPaused(false) // Initial timer is not paused
     , mistakeCount(0) // Initialize mistake count to zero
+    , isPaused(false) // Initial timer is not paused
+    , notesEnabled(false) // Initialize notes mode to off
 
 {
     ui->setupUi(this);
+
+    // Disable minimize, maximize, and close buttons
+    setWindowFlags(Qt::Window | Qt::WindowTitleHint | Qt::CustomizeWindowHint);
+
     loadInitialGrid();
 
     // Initializing the timer
@@ -53,6 +58,12 @@ GameWindow::GameWindow(Difficulty difficulty, QWidget *parent)
         ui->pushButton7, ui->pushButton8, ui->pushButton9,
         ui->pushButtonUndo, ui->pushButtonHint
     };
+
+    // Hint button setup
+    connect(ui->toggleNotesMode, &QCheckBox::toggled, this, &GameWindow::toggleNotesMode);
+
+    // Button to close window
+    connect(ui->pushButtonCloseWindow, &QPushButton::clicked, this, &GameWindow::closeGameWindow);
 }
 
 GameWindow::~GameWindow()
@@ -177,47 +188,127 @@ void GameWindow::updateTimer() {
 void GameWindow::handleNumberInput(int number) {
     qDebug() << "handleNumberInput called with number:" << number;
 
-    if (selectedCell && !selectedCell->isReadOnly()) { // Check if a cell is selected and editable
+    if (selectedCell && !selectedCell->isReadOnly()) { // Ensure the cell is editable
         qDebug() << "Updating selected cell:" << selectedCell->objectName();
 
-        // Extract row and column from selected cell's name (e.g., "cell11" for row 1, col 1)
+        // Extract row and column from the selected cell's name
         QString name = selectedCell->objectName();
         int row = name.mid(4, 1).toInt() - 1;
         int col = name.mid(5, 1).toInt() - 1;
 
+        // Get the current value of the cell
+        int previousValue = selectedCell->text().isEmpty() ? 0 : selectedCell->text().toInt();
+
         // Push only the row and column of the move onto the stack
         moveStack.push({row, col});
 
-        // Setting the entered number in the selected cell
-        selectedCell->setText(QString::number(number));
+        if (notesEnabled) {
+            // Notes Mode: Replace any existing note with the current number
+            cellNotes[selectedCell].clear(); // Clear any existing note
+            cellNotes[selectedCell].insert(number); // Add the current note
+            updateCellDisplay(selectedCell); // Update the cell display to show the note
+        } else {
+            // Normal Mode: Add a final answer
+            cellNotes[selectedCell].clear(); // Clear all notes for this cell
+            updateCellDisplay(selectedCell); // Update the display to remove notes
 
-        // Check if the entered number is correct and handle mistakes
-        checkAndHandleInput(row, col, number);
+            // Set the entered number in the selected cell
+            selectedCell->setText(QString::number(number));
+
+            // Reset the cell's style for normal mode (e.g., black text)
+            selectedCell->setStyleSheet("color: blue; background-color: white; border: 1px solid #31cc02;");
+
+            selectedCell->setAlignment(Qt::AlignCenter); // Center-align the number
+
+            // Update the game grid
+            game->setCellValue(row, col, number);
+
+            // Check if the entered number is correct and handle mistakes
+            checkAndHandleInput(row, col, number);
+        }
     } else {
         qDebug() << "No selected cell or cell is read-only";
     }
 }
 
+
 void GameWindow::undoLastMove(){
-    if(!moveStack.isEmpty()){
-        Move lastMove = moveStack.pop(); // Get the last move
+        if(!moveStack.isEmpty()){
+            Move lastMove = moveStack.pop(); // Get the last move
 
-        // Finding the corresponding cell based on row and col
-        QString cellName = QString("cell%1%2").arg(lastMove.row + 1).arg(lastMove.col + 1);
-        QLineEdit *cell = findChild<QLineEdit *>(cellName);
+            // Finding the corresponding cell based on row and col
+            QString cellName = QString("cell%1%2").arg(lastMove.row + 1).arg(lastMove.col + 1);
+            QLineEdit *cell = findChild<QLineEdit *>(cellName);
 
-        if (cell && !cell->isReadOnly()) { // Only modify editable cells
-            cell->clear(); // Clear the cell if the previous value was empty
-            qDebug() << "Undo last move: row" << lastMove.row << ", col" << lastMove.col;
+            if (cell && !cell->isReadOnly()) { // Only modify editable cells
+               // Getting the last value
+                if (lastMove.previousValue == 0){
+                   cell->clear();
+                } else {
+                    cell->setText(QString::number(lastMove.previousValue));
+                }
+
+                // Reset the cell's style
+                cell->setStyleSheet("color: blue; background-color: white; border: 1px solid #31cc02;");
+                cell->setAlignment(Qt::AlignCenter);
+
+                // Clear notes for this cell
+                cellNotes[cell].clear();
+                updateCellDisplay(cell);
+
+                // Update game grid to show the undone move
+                game->setCellValue(lastMove.row, lastMove.col, lastMove.previousValue);
+
+                qDebug() << "Undo last move: row" << lastMove.row << ", col" << lastMove.col
+                         << ", restored value:" << lastMove.previousValue;
+        } else {
+            qDebug() << "No moves to undo";
         }
-    } else {
-        qDebug() << "No moves to undo";
     }
 }
 
-void GameWindow::setButtonEnabled(bool enable) {
+void GameWindow::toggleNotesMode(bool enabled){
+    notesEnabled = enabled;
+}
+
+void GameWindow::setButtonEnabled(bool enabled) {
     for (auto button : interactiveButtons)  {
-        button->setEnabled(enable);
+        button->setEnabled(enabled);
     }
 }
 
+void GameWindow::updateCellDisplay(QLineEdit *cell) {
+    if (!cellNotes[cell].isEmpty()) {
+        // Display the single note in the top-left corner
+        int note = *cellNotes[cell].begin(); // Get the single note from the set
+        QString notesText = QString::number(note);
+
+        // Set the smaller font for notes
+        cell->setFont(QFont("Arial Black", 7)); // Small font for notes
+        cell->setText(notesText);
+        cell->setAlignment(Qt::AlignTop | Qt::AlignLeft); // Align notes to the top-left corner
+
+        // Set the style for notes mode
+        cell->setStyleSheet("color: blue; background-color: white; border: 1px solid #31cc02;");
+    } else {
+        // Clear the cell if no notes are present
+        cell->setFont(QFont("Arial Black", 10)); // Reset to normal font for final answer
+        cell->setAlignment(Qt::AlignCenter);
+
+        // Reset the cell's style for normal mode
+        cell->setStyleSheet("color: blue; background-color: white; border: 1px solid #31cc02;");
+    }
+}
+
+void GameWindow::closeGameWindow(){
+    // Stop the timer if it's running
+    if (timer->isActive()) {
+        timer->stop();
+    }
+
+    // Close the current game window
+    this->close();
+
+    // Emit a signal to notify MainWindow to reload itself
+    emit gameWindowClosed();
+}

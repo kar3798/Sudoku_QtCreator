@@ -13,14 +13,16 @@ SOURCES += \
     main.cpp \
     mainwindow.cpp \
     puzzleloader.cpp \
-    sudokugame.cpp
+    sudokugame.cpp \
+    sudokugenerator.cpp
 
 HEADERS += \
     gamewindow.h \
     mainwindow.h \
     puzzleloader.h \
     sudokucell.h \
-    sudokugame.h
+    sudokugame.h \
+    sudokugenerator.h
 
 FORMS += \
     gamewindow.ui \
@@ -30,3 +32,6 @@ FORMS += \
 qnx: target.path = /tmp/$${TARGET}/bin
 else: unix:!android: target.path = /opt/$${TARGET}/bin
 !isEmpty(target.path): INSTALLS += target
+
+RESOURCES += \
+    icons.qrc

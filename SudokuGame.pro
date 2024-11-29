@@ -13,16 +13,14 @@ SOURCES += \
     main.cpp \
     mainwindow.cpp \
     puzzleloader.cpp \
-    sudokugame.cpp \
-    sudokugenerator.cpp
+    sudokugame.cpp
 
 HEADERS += \
     gamewindow.h \
     mainwindow.h \
     puzzleloader.h \
     sudokucell.h \
-    sudokugame.h \
-    sudokugenerator.h
+    sudokugame.h
 
 FORMS += \
     gamewindow.ui \

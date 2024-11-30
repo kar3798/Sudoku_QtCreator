@@ -8,22 +8,28 @@ SudokuGame::SudokuGame(Difficulty difficulty, QObject *parent)
     initializeGrid();
 }
 
+// void SudokuGame::initializeGrid() {
+//     auto [puzzle, solutionGrid] = PuzzleLoader::loadPuzzle(difficulty);
+
+//     // Basic validation logic to check that puzzle and solution are 9x9
+//     if (puzzle.size() == 9 && solutionGrid.size() == 9){
+//         for (int i = 0; i < 9; ++i) {
+//             if (puzzle[i].size() != 9 || solutionGrid[i].size() !=9){
+//                 qWarning() << "Invalid puzzle or solution size";
+//                 return; // Exit if grid size is invalid
+//             }
+//         }
+//         grid = puzzle;
+//         solution = solutionGrid; // Storing solution for checking and hint generation
+//     } else {
+//         qWarning() << "Invalid puzzle or solution size";
+//     }
+// }
+
 void SudokuGame::initializeGrid() {
     auto [puzzle, solutionGrid] = PuzzleLoader::loadPuzzle(difficulty);
-
-    // Basic validation logic to check that puzzle and solution are 9x9
-    if (puzzle.size() == 9 && solutionGrid.size() == 9){
-        for (int i = 0; i < 9; ++i) {
-            if (puzzle[i].size() != 9 || solutionGrid[i].size() !=9){
-                qWarning() << "Invalid puzzle or solution size";
-                return; // Exit if grid size is invalid
-            }
-        }
-        grid = puzzle;
-        solution = solutionGrid; // Storing solution for checking and hint generation
-    } else {
-        qWarning() << "Invalid puzzle or solution size";
-    }
+    grid = puzzle;
+    solution = solutionGrid;
 }
 
 QVector<QVector<int>> SudokuGame::getGrid() const {

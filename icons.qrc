@@ -2,4 +2,7 @@
     <qresource prefix="/icon">
         <file>icons/close.png</file>
     </qresource>
+    <qresource prefix="/puzzle">
+        <file>sudoku_puzzles_formatted.json</file>
+    </qresource>
 </RCC>
